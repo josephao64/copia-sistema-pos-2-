@@ -1,0 +1,112 @@
+@model SistemiPos.Web.Models.Sales.PrintableReceiptViewModel
+@using SistemiPos.Domain.Configuration
+@using SistemiPos.Domain.Sales
+@{
+    Layout = null;
+    var sale = Model.Sale;
+    var settings = Model.Settings;
+    var currencyBefore = settings.CurrencySymbolPosition == CurrencySymbolPosition.Before;
+    string Money(decimal value)
+    {
+        var number = value.ToString($"N{settings.CurrencyDecimals}");
+        return currencyBefore ? $"{settings.CurrencySymbol} {number}" : $"{number} {settings.CurrencySymbol}";
+    }
+    string PaymentMethod() => sale.Payment.PaymentMethod switch
+    {
+        PaymentMethodType.Cash => "Efectivo",
+        PaymentMethodType.Transfer => "Transferencia",
+        PaymentMethodType.Pos => "Tarjeta / POS",
+        _ => sale.Payment.PaymentMethod.ToString()
+    };
+    var configuredLogoUrl = settings.BusinessLogoUrl?.Trim();
+    var logoUrl = string.IsNullOrWhiteSpace(configuredLogoUrl)
+        ? "/images/business/miscelanea-nc-logo.jpg"
+        : System.IO.Path.IsPathRooted(configuredLogoUrl)
+            ? Url.Action("BusinessLogo", "Sales")!
+            : configuredLogoUrl.Replace('\\', '/');
+    var issuerName = string.IsNullOrWhiteSpace(settings.BusinessLegalName)
+        ? settings.BusinessName
+        : settings.BusinessLegalName;
+    var showTradeName = !string.IsNullOrWhiteSpace(settings.BusinessLegalName)
+        && !string.Equals(settings.BusinessLegalName, settings.BusinessName, StringComparison.OrdinalIgnoreCase);
+    var newSaleUrl = Url.RouteUrl("pos") ?? "/pos";
+    var autoPrint = bool.TryParse(Context.Request.Query["autoPrint"], out var parsedAutoPrint) && parsedAutoPrint;
+}
+<!DOCTYPE html>
+<html lang="es-GT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comprobante @sale.Number</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        body { background: #eef2f4; color: #172433; }
+        .receipt-page { width: min(210mm, calc(100% - 32px)); min-height: 297mm; margin: 24px auto; padding: 18mm; background: #fff; box-shadow: 0 12px 40px rgba(17, 38, 58, .14); font-family: Inter, Arial, sans-serif; }
+        .receipt-actions { width: min(210mm, calc(100% - 32px)); margin: 18px auto 0; display: flex; justify-content: flex-end; gap: 10px; }
+        .receipt-header { display:flex; justify-content:space-between; gap:28px; padding-bottom:18px; border-bottom:2px solid #1d5a44; }
+        .receipt-brand { display:flex; align-items:center; gap:16px; min-width:0; }
+        .receipt-brand img { width:84px; height:84px; object-fit:contain; border-radius:12px; }
+        .receipt-brand h1 { margin:0; font-size:20px; letter-spacing:.04em; } .receipt-brand p,.receipt-meta p,.receipt-customer p { margin:3px 0; font-size:12px; color:#5d6975; }
+        .receipt-document { text-align:right; } .receipt-document h2 { margin:0 0 7px; color:#1d5a44; font-size:22px; text-transform:uppercase; letter-spacing:.05em; }
+        .receipt-document strong { display:block; font-size:14px; } .receipt-status { display:inline-block; margin-top:8px; padding:4px 9px; border-radius:999px; background:#e6f2eb; color:#16623f; font-size:11px; font-weight:800; }
+        .receipt-customer { display:grid; grid-template-columns:1fr 1fr; gap:18px; padding:20px 0; border-bottom:1px solid #dce4e8; } .receipt-customer strong { color:#172433; }
+        .receipt-table { width:100%; border-collapse:collapse; margin-top:20px; font-size:12px; } .receipt-table th { text-align:left; padding:9px 7px; color:#fff; background:#1d5a44; font-size:10px; text-transform:uppercase; letter-spacing:.06em; } .receipt-table td { padding:10px 7px; border-bottom:1px solid #e4eaed; vertical-align:top; } .receipt-table .number { text-align:right; white-space:nowrap; }
+        .receipt-total { margin-left:auto; width:min(320px,100%); padding-top:18px; } .receipt-total div { display:flex; justify-content:space-between; padding:5px 0; font-size:13px; } .receipt-total .grand-total { margin-top:6px; padding-top:10px; border-top:2px solid #1d5a44; font-size:19px; font-weight:800; color:#173f31; }
+        .receipt-payment { margin-top:28px; padding:14px; border-radius:8px; background:#f4f8f6; display:grid; grid-template-columns:repeat(2, 1fr); gap:8px 18px; font-size:12px; } .receipt-payment strong { color:#173f31; }
+        .receipt-footer { margin-top:36px; padding-top:16px; border-top:1px solid #dce4e8; color:#60707a; text-align:center; font-size:11px; line-height:1.55; }
+        @@media print { @@page { size:A4; margin:0; } body { background:#fff; } .receipt-actions { display:none; } .receipt-page { width:auto; min-height:0; margin:0; padding:14mm; box-shadow:none; } }
+        @@media (max-width:640px) { .receipt-page { width:100%; margin:0; padding:22px; } .receipt-header,.receipt-customer { display:block; } .receipt-document { text-align:left; margin-top:18px; } .receipt-customer > div + div { margin-top:12px; } }
+    </style>
+</head>
+<body data-auto-print="@(autoPrint ? "true" : "false")">
+    <div class="receipt-actions"><button type="button" class="button-primary" onclick="window.print()">Imprimir</button><button type="button" class="button-secondary" data-close-receipt>Cerrar</button></div>
+    <main class="receipt-page">
+        <header class="receipt-header">
+            <div class="receipt-brand"><img src="@logoUrl" alt="Logo de @settings.BusinessName" /><div><h1>@issuerName</h1>@if (showTradeName) { <p>@settings.BusinessName</p> }<p>NIT: @(settings.BusinessNit ?? "No configurado")</p>@if (!string.IsNullOrWhiteSpace(settings.BusinessAddress)) { <p>@settings.BusinessAddress</p> }@if (!string.IsNullOrWhiteSpace(settings.BusinessPhone)) { <p>Tel. @settings.BusinessPhone</p> }@if (!string.IsNullOrWhiteSpace(settings.BusinessEmail)) { <p>@settings.BusinessEmail</p> }</div></div>
+            <div class="receipt-document"><h2>Comprobante de venta</h2><strong>@sale.Number</strong><p>Fecha: @sale.SoldAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p><span class="receipt-status">@sale.Status</span></div>
+        </header>
+        <section class="receipt-customer"><div><p>Cliente</p><strong>@sale.CustomerName</strong></div><div><p>NIT / ID</p><strong>@Model.CustomerNit</strong></div></section>
+        <table class="receipt-table"><thead><tr><th>Cant.</th><th>Descripción</th><th class="number">P. unitario</th><th class="number">Descuento</th><th class="number">Total</th></tr></thead><tbody>
+        @foreach (var item in sale.Items) { <tr><td>@DisplayFormats.Quantity(item.Quantity)</td><td>@item.ProductName</td><td class="number">@Money(item.UnitPrice)</td><td class="number">@Money(item.DiscountAmount)</td><td class="number">@Money(item.Subtotal)</td></tr> }
+        </tbody></table>
+        <section class="receipt-total"><div><span>Subtotal</span><strong>@Money(sale.Subtotal)</strong></div>@if (sale.DiscountTotal > 0) { <div><span>Descuento</span><strong>-@Money(sale.DiscountTotal)</strong></div> }@if (settings.ShowTaxOnReceipt) { <div><span>Impuesto</span><strong>@Money(sale.TaxTotal)</strong></div> }<div class="grand-total"><span>Total</span><span>@Money(sale.Total)</span></div></section>
+        <section class="receipt-payment"><div><span>Forma de pago</span><strong>@PaymentMethod()</strong></div>@if (sale.Payment.PaymentMethod == PaymentMethodType.Cash) { <div><span>Recibido</span><strong>@Money(sale.Payment.ReceivedAmount ?? sale.Total)</strong></div><div><span>Cambio</span><strong>@Money(Math.Max(0, (sale.Payment.ReceivedAmount ?? sale.Total) - sale.Total))</strong></div> } else { <div><span>Referencia</span><strong>@(sale.Payment.TransferReference ?? sale.Payment.CardVoucherReference ?? "—")</strong></div> }</section>
+        <footer class="receipt-footer"><div>@(settings.ReceiptFooter ?? "¡Gracias por su compra!")</div><div>Este comprobante no sustituye una factura FEL. La factura electrónica debe emitirse mediante el proceso certificado correspondiente.</div></footer>
+    </main>
+</body>
+<script>
+    (() => {
+        const fallbackUrl = '@newSaleUrl';
+        const returnToSystem = () => {
+            try {
+                const previous = new URL(document.referrer);
+                if (previous.origin === window.location.origin && !previous.pathname.startsWith("/Sales/Print")) {
+                    window.history.back();
+                    return;
+                }
+            } catch {
+                // Si no hay una página previa válida, se abre una nueva venta.
+            }
+            window.location.replace(fallbackUrl);
+        };
+
+        document.querySelector("[data-close-receipt]")?.addEventListener("click", () => {
+            window.close();
+            window.setTimeout(() => {
+                if (!window.closed) returnToSystem();
+            }, 150);
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key !== "Enter" || event.repeat) return;
+            event.preventDefault();
+            window.print();
+        });
+
+        @if (autoPrint)
+        {
+            <text>window.addEventListener("load", () => window.setTimeout(() => window.print(), 250));</text>
+        }
+    })();
+</script>
+</html>

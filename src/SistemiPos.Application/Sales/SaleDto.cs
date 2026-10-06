@@ -1,0 +1,35 @@
+using SistemiPos.Domain.Sales;
+
+namespace SistemiPos.Application.Sales;
+
+public sealed record SaleDto(
+    Guid Id,
+    string Number,
+    Guid CashSessionId,
+    Guid? CustomerId,
+    string CustomerName,
+    DateTimeOffset SoldAtUtc,
+    string CashierUserName,
+    decimal Subtotal,
+    decimal DiscountTotal,
+    decimal TaxableBaseTotal,
+    decimal TaxTotal,
+    decimal Total,
+    string? DiscountAppliedByUserName,
+    DateTimeOffset? DiscountAppliedAtUtc,
+    string? DiscountReason,
+    string? DiscountAuthorizedByUserName,
+    DateTimeOffset? DiscountAuthorizedAtUtc,
+    string CurrencyCode,
+    string CurrencyName,
+    string CurrencySymbol,
+    int CurrencyDecimals,
+    string DecimalSeparator,
+    string ThousandsSeparator,
+    string CurrencySymbolPosition,
+    SaleStatus Status,
+    SalePaymentDto Payment,
+    IReadOnlyList<SaleItemDto> Items,
+    string? CustomerNit = null,
+    string? ClientOperationId = null,
+    DateTimeOffset? SynchronizedAtUtc = null);

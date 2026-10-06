@@ -1,0 +1,7 @@
+<partial name="_ValidationScriptsPartial" />
+<script src="~/js/purchase-capture.js" asp-append-version="true"></script>
+<script src="~/js/purchase-presentation-modal.js" asp-append-version="true"></script>
+@if (ViewData["PurchaseCaptureSaveError"] is string purchaseCaptureSaveError)
+{
+    <script>window.showSystemToast?.('error', @Html.Raw(System.Text.Json.JsonSerializer.Serialize(purchaseCaptureSaveError)));</script>
+}

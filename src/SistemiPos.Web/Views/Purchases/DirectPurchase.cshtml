@@ -1,0 +1,34 @@
+@model SistemiPos.Web.Models.Purchases.DirectPurchaseFormViewModel
+@{
+    ViewData["Title"] = "Registrar compra directa";
+    var currencySymbol = ViewBag.CurrencySymbol as string ?? "Q";
+    var currencyDecimals = ViewBag.CurrencyDecimals is int value ? value : 2;
+    var taxPercent = ViewBag.TaxPercent is decimal tax ? tax : 0;
+    var capture = new SistemiPos.Web.Models.Purchases.PurchaseCapturePartialViewModel
+    {
+        IsDirectPurchase = true, SupplierId = Model.SupplierId, SupplierName = Model.SupplierName,
+        SupplierNit = Model.SupplierNit, SupplierDocumentDateLocal = Model.SupplierDocumentDateLocal,
+        SupplierDocumentNumber = Model.SupplierDocumentNumber, Terms = Model.Terms, CreditDays = Model.CreditDays,
+        GlobalDiscountType = Model.GlobalDiscountType, GlobalDiscountValue = Model.GlobalDiscountValue,
+        Observations = Model.Observations, Suppliers = Model.Suppliers, Products = Model.Products,
+        Presentations = Model.Presentations, CurrencySymbol = currencySymbol, CurrencyDecimals = currencyDecimals,
+        TaxPercent = taxPercent,
+        Items = Model.Items.Select(x => new SistemiPos.Web.Models.Purchases.PurchaseCaptureLineViewModel
+        {
+            ProductId = x.ProductId, ProductName = x.ProductName, IsAdditional = true,
+            ManagesExpiry = x.ManagesExpiry, ExpiryDate = x.ExpiryDate, PresentationId = x.PresentationId,
+            PackageType = x.PackageType, PackageQuantity = x.PackageQuantity, UnitsPerPackage = x.UnitsPerPackage,
+            PackageCost = x.PackageCost, LastPurchaseCost = x.LastPurchaseCost,
+            DiscountType = x.DiscountType, DiscountValue = x.DiscountValue,
+            SupplierProductName = x.SupplierProductName, SupplierProductCode = x.SupplierProductCode,
+            SalePrice = x.SalePrice, AppliesTax = x.AppliesTax, MultiPriceEnabled = x.MultiPriceEnabled,
+            MultiPriceRulesJson = x.MultiPriceRulesJson, PricingInitialized = x.PricingInitialized
+        }).ToList()
+    };
+}
+
+<partial name="_PurchaseCaptureForm" model="capture" />
+
+@section Scripts {
+    <partial name="_PurchaseCaptureScripts" />
+}

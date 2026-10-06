@@ -1,0 +1,79 @@
+@model IReadOnlyList<SistemiPos.Application.Security.SecurityAuditLogEntry>
+@using SistemiPos.Application.Security
+@{
+    ViewData["Title"] = "Auditoría de seguridad";
+}
+
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Seguridad</p>
+        <h1>Registro de Auditoría y Accesos</h1>
+        <p class="lead">Trazabilidad de inicios de sesión, bloqueos de cuenta y modificaciones sobre usuarios.</p>
+    </div>
+</section>
+
+<div class="table-card" data-filter-table>
+    <div class="search-bar">
+        <input type="search" class="input" data-table-search autocomplete="off" placeholder="Buscar por usuario, acción, IP o fecha..." aria-label="Buscar eventos de auditoría" />
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Fecha y hora</th>
+                <th>Evento / Acción</th>
+                <th>Usuario / Actor</th>
+                <th>IP / Referencia</th>
+                <th>Detalle del evento</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var log in Model)
+        {
+            var badgeColor = log.Action switch
+            {
+                SecurityAuditActions.LoginSuccess => "background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;",
+                SecurityAuditActions.LoginFailure => "background: #fffbeb; color: #92400e; border: 1px solid #fde68a;",
+                SecurityAuditActions.AccountLockedOut => "background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;",
+                SecurityAuditActions.Logout => "background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;",
+                SecurityAuditActions.CreateUser or SecurityAuditActions.ActivateUser => "background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;",
+                SecurityAuditActions.DeactivateUser => "background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;",
+                SecurityAuditActions.ResetPassword or SecurityAuditActions.ChangeOwnPassword => "background: #faf5ff; color: #6b21a8; border: 1px solid #e9d5ff;",
+                _ => "background: #f8fafc; color: #334155; border: 1px solid #e2e8f0;"
+            };
+
+            var actionLabel = log.Action switch
+            {
+                SecurityAuditActions.LoginSuccess => "Login exitoso",
+                SecurityAuditActions.LoginFailure => "Login fallido",
+                SecurityAuditActions.AccountLockedOut => "Bloqueo de cuenta",
+                SecurityAuditActions.Logout => "Logout",
+                SecurityAuditActions.CreateUser => "Usuario creado",
+                SecurityAuditActions.UpdateUser => "Usuario modificado",
+                SecurityAuditActions.ActivateUser => "Usuario activado",
+                SecurityAuditActions.DeactivateUser => "Usuario desactivado",
+                SecurityAuditActions.ResetPassword => "Clave restablecida",
+                SecurityAuditActions.ChangeOwnPassword => "Clave actualizada",
+                _ => log.Action
+            };
+
+            <tr>
+                <td style="white-space: nowrap; font-size: 0.8125rem;">
+                    @log.OccurredAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+                </td>
+                <td>
+                    <span class="badge" style="padding: 0.2rem 0.6rem; border-radius: 0.25rem; font-size: 0.75rem; @badgeColor">
+                        @actionLabel
+                    </span>
+                </td>
+                <td><strong>@(log.UserName ?? "Anónimo")</strong></td>
+                <td style="font-size: 0.8125rem; color: #64748b;">@(log.DocumentNumber ?? "-")</td>
+                <td style="font-size: 0.8125rem; max-width: 350px; word-break: break-word;">
+                    @log.ChangesJson
+                </td>
+            </tr>
+        }
+            <tr data-filter-empty hidden><td colspan="5">No se encontraron registros de auditoría.</td></tr>
+        </tbody>
+    </table>
+</div>
+
